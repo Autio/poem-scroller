@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+      body {
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        justify-content: center;
+        background: #f5f5f5;
+        font-family: 'Courier New', Courier, monospace, -apple-system, sans-serif;
+        min-height: 100vh;
+      }
+  
+      .container {
+        width: 100%;
+        max-width: 600px; /* Increased from 600px */
+        height: 800px;
+        overflow: hidden;
+        position: relative;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        margin: 0 auto;
+      }
+  
+      .poem-container {
+        position: absolute;
+        width: 100%;
+        transition: transform 0ms linear;
+        box-sizing: border-box;
+        padding: 0 40px; /* Added padding */
+      }
+  
+      .poem-line {
+        padding: 8px 10px;
+        box-sizing: border-box;
+        white-space: pre;  /* Force single line */
+        line-height: 0.5;
+        overflow-x: auto;  /* Allow horizontal scroll if needed */
+        width: 100%;
+        -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+        scrollbar-width: none; /* Hide scrollbar on Firefox */
+        -ms-overflow-style: none; /* Hide scrollbar on IE/Edge */
+      }
+  
+      .poem-line::-webkit-scrollbar {
+        display: none; /* Hide scrollbar on Chrome/Safari */
+      }
+  
+      .controls {
+        position: fixed;
+        bottom: 60px;
+        display: flex;
+        flex-direction: row;
+        gap: 5px;
+        background: white;
+        padding: 10px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        width: auto;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 10;
+      }
+  
+      button {
+        padding: 8px 12px;
+        border: none;
+        border-radius: 4px;
+        background: #007bff;
+        color: white;
+        cursor: pointer;
+      }
+  
+      button:hover {
+        background: #0056b3;
+      }
+  
+      #speed-display {
+        padding: 8px 12px;
+        background: #f8f9fa;
+        border-radius: 4px;
+        text-align: center;
+      }
+  
+      @media (max-width: 800px) {
+        body {
+          padding: 0;
+        }
+  
+        .container {
+          max-width: none;
+          width: 120%; /* Make container wider than viewport */
+          margin-left: -10%; /* Center the wider container */
+          height: calc(100vh - 100px);
+          border-radius: 0;
+          box-shadow: none;
+        }
+  
+        .controls {
+          bottom: 0;
+          width: 100%;
+          border-radius: 0;
+          flex-wrap: wrap;
+          justify-content: center;
+          background: rgba(255, 255, 255, 0.95);
+        }
+  
+        .poem-line {
+          font-size: 10px;
+        }
+  
+        #speed-display {
+          font-size: 12px;
+        }
+      }
+    </style>
+  </head>
+<body>
+  <!-- Rest of the HTML and JavaScript remains the same -->
+  <div class="container" id="container">
+    <div class="poem-container" id="poem1"></div>
+    <div class="poem-container" id="poem2"></div>
+  </div>
+
+  <div class="controls">
+    <button onclick="changeSpeed(-0.05)">Slower</button>
+    <div id="speed-display">Speed: 0.1px/frame</div>
+    <button onclick="changeSpeed(0.05)">Faster</button>
+    <button onclick="changePoem()">Change Poem</button>
+    <button id="pause-button" onclick="togglePause()">Pause</button>
+  </div>
+
+  <script>
+    // JavaScript remains exactly the same as in the previous version
+    let defaultPoem = `compression 
+atop your perfumed bones
+of sunlight swept ashore to crumb
+what aspires aeonic in incombustible turns
+generation through generation of ill-seamed breach
+find in me the frailest pause of jubilance
+a bell to chime the lurch of hope
+held fast in purple palm
+resplendent
+burdens hoisted so brisk
+in gratitude to greet what feasts
+on flows deep primed to endear the ground 
+by whippings bring forth the nigh-everlasting spin
+sacrificed for the sun's trampling hunger
+the cycle of guilt and humilities
+around gifts unrepayable
+unsolicited
+we burn whatever may ail
+to bless the air with whisperings 
+stemmed ruthless athwart a disc conformed
+to twirl out of our bounds garbed by pointed ideal
+materials anonymous clutched in curvature
+forlorn reap respites centripetal
+at stigma erect among us 
+hypercycles
+reflected by tender seam
+the same for wider moment's worth
+giving wave a scroll in lilac capitulated 
+rise to desire a desire by desire's desire desired
+in sacrifice sacrificed upwards recycling 
+modes of life so delicate crumple
+in strain kneel high for
+absolutions
+from barest mix of being 
+and nil the mind of god now shits
+us ill with longing's torrid inward still
+dripping dense to fill us blossoms before creation 
+souls beautiful hard-pressed will grapple
+dirty skirmish always won already 
+pray looping lossless in`;
+
+    const container = document.getElementById('container');
+    const poem1 = document.getElementById('poem1');
+    const poem2 = document.getElementById('poem2');
+    let speed = 0.1;  // Starting with a slower default speed
+    let animationId;
+    let poemHeight = 0;
+    let isPaused = false; // Variable to track pause state
+
+    function createPoem(text) {
+      poem1.innerHTML = '';
+      poem2.innerHTML = '';
+
+      const lines = text.split('\n').filter(line => line.trim() !== '');
+      lines.forEach(lineText => {
+        const line1 = document.createElement('div');
+        const line2 = document.createElement('div');
+        line1.className = line2.className = 'poem-line';
+        line1.textContent = line2.textContent = lineText;
+        poem1.appendChild(line1);
+        poem2.appendChild(line2);
+      });
+
+      poemHeight = poem1.offsetHeight;
+
+      poem1.style.transform = 'translateY(0)';
+      poem2.style.transform = `translateY(${poemHeight}px)`;
+    }
+
+    function animate() {
+      let pos1 = parseFloat(poem1.style.transform.replace('translateY(', ''));
+      let pos2 = parseFloat(poem2.style.transform.replace('translateY(', ''));
+      
+      pos1 -= speed;
+      pos2 -= speed;
+
+      if (pos1 < -poemHeight) {
+        pos1 = pos2 + poemHeight;
+      }
+      if (pos2 < -poemHeight) {
+        pos2 = pos1 + poemHeight;
+      }
+
+      poem1.style.transform = `translateY(${pos1}px)`;
+      poem2.style.transform = `translateY(${pos2}px)`;
+
+      animationId = requestAnimationFrame(animate);
+    }
+
+    function changeSpeed(delta) {
+      speed = Math.max(0.1, Math.min(0.5, speed + delta));
+      document.getElementById('speed-display').textContent = `Speed: ${speed.toFixed(2)}px/frame`;
+    }
+
+    function changePoem() {
+      const newPoem = prompt('Paste your poem here:');
+      if (newPoem) {
+        cancelAnimationFrame(animationId);
+        createPoem(newPoem);
+        animate();
+      }
+    }
+
+    function startCountdown() {
+      let countdown = 3; // 3 seconds countdown
+      const countdownDisplay = document.createElement('div');
+      countdownDisplay.style.position = 'absolute';
+      countdownDisplay.style.top = '20px';
+      countdownDisplay.style.right = '20px';
+      countdownDisplay.style.fontSize = '48px';
+      countdownDisplay.style.color = '#007bff';
+      document.getElementById('container').appendChild(countdownDisplay);
+
+      const interval = setInterval(() => {
+        countdownDisplay.textContent = countdown;
+        countdown--;
+        if (countdown < 0) {
+          clearInterval(interval);
+          document.getElementById('container').removeChild(countdownDisplay);
+          animate();
+        }
+      }, 1000);
+    }
+
+    function togglePause() {
+      if (isPaused) {
+        animate();
+        document.getElementById('pause-button').textContent = 'Pause';
+      } else {
+        cancelAnimationFrame(animationId);
+        document.getElementById('pause-button').textContent = 'Resume';
+      }
+      isPaused = !isPaused;
+    }
+
+    // Initialize
+    createPoem(defaultPoem);
+    startCountdown();
+  </script>
+</body>
+</html>
